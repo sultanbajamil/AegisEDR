@@ -1,12 +1,12 @@
-# AegisEDR: A Lightweight Endpoint Detection & Response Ecosystem
+﻿# 🛡️ AegisEDR: Lightweight Endpoint Detection & Response Ecosystem
 
-AegisEDR is a lightweight, low-footprint Endpoint Detection and Response (EDR) system designed for Windows endpoints. It features a dual-component architecture consisting of a C# systems monitoring agent and a centralized FastAPI management server with a real-time web dashboard.
+AegisEDR is a lightweight, low-footprint Endpoint Detection and Response (EDR) system designed for Windows endpoints. It features a dual-component architecture consisting of a high-performance **C# (.NET 10.0)** systems monitoring agent and a centralized **FastAPI (Python 3.13)** management server with a real-time web dashboard.
 
-This project is built to demonstrate systems programming, defensive security engineering, real-time telemetry analysis, and automated threat triage capabilities.
+This project demonstrates low-level systems programming, defensive security engineering, real-time Windows telemetry analysis, and automated threat triage & containment.
 
 ---
 
-## Architecture & Workflow
+## 🏗️ Architecture & Workflow
 
 ```mermaid
 graph TD
@@ -29,94 +29,93 @@ graph TD
 
 ---
 
-## Key Features
+## 🌟 Key Features
 
-1.  **Real-Time Process Monitoring (`WMI Process Trace`)**:
-    *   Subscribes asynchronously to Windows process creation events.
-    *   Triggers warnings and critical alerts for suspicious command lines (e.g. Volume Shadow Copy deletion via `vssadmin`, execution policy bypass in PowerShell, LOLbin execution via `certutil`).
-    *   Triggers **Critical Alert** for LSASS memory dumps and credential theft tools (e.g. `comsvcs.dll` minidumps, `mimikatz` execution).
-2.  **Outbound Network Connection Tracker**:
-    *   Monitors established TCP connections, matching them to their owning process and PID.
-    *   Flags connections made to suspicious external C2 ports (e.g. `4444`, `8888`, `8080`, `31337`).
-3.  **Registry Persistence Auditing**:
-    *   Watches standard startup run keys (`HKCU` and `HKLM` CurrentVersion\Run).
-    *   Alerts on new entries pointing to user-writable folders (`Temp`, `AppData`) or running script files.
-4.  **File Integrity & MD5 Hashing**:
-    *   Uses `FileSystemWatcher` on User and Common Startup folders.
-    *   Automatically hashes dropped executables and scripts.
-5.  **VirusTotal API Integration**:
-    *   Automatically checks file hashes against VirusTotal threat intelligence.
-    *   Displays malicious/clean triage counts and links directly to VirusTotal reports.
-6.  **Active Remediation & Containment**:
-    *   **Process Kill**: Terminate target processes and all descendants remotely from the dashboard.
-    *   **Host Isolation**: Uses Windows Firewall commands dynamically to isolate the compromised host from the network while maintaining agent-server communication.
-    *   **Diagnostics**: Fetch real-time host hardware, OS, disk, and networking state.
-
----
-
-## Tech Stack
-
-*   **Endpoint Agent**: C# (.NET 10.0), Windows Management Instrumentation (WMI), Registry & File IO APIs.
-*   **Central Server**: Python 3.13, FastAPI (ASGI), SQLAlchemy ORM, Uvicorn, Jinja2 Templates.
-*   **Threat Intel**: VirusTotal API v3.
-*   **Web Console**: HTML5, Tailwind CSS, FontAwesome, JavaScript.
-*   **Database**: SQLite (Self-contained).
+1. **Real-Time Process Monitoring (`WMI Process Trace`)**:
+   - Subscribes asynchronously to Windows process creation events.
+   - Triggers warnings and critical alerts for suspicious command lines (e.g., Volume Shadow Copy deletion via `vssadmin`, execution policy bypass in PowerShell, LOLbin execution via `certutil`).
+   - Triggers **Critical Alerts** for LSASS memory dumps and credential theft tools (e.g., `comsvcs.dll` minidumps, `mimikatz` execution).
+2. **Outbound Network Connection Tracker**:
+   - Continuously monitors established TCP connections, matching each connection to its owning process and PID.
+   - Flags connections made to suspicious external Command & Control (C2) ports (e.g., `4444`, `8888`, `8080`, `31337`).
+3. **Registry Persistence Auditing**:
+   - Watches standard startup run keys (`HKCU` and `HKLM` `CurrentVersion\Run`).
+   - Alerts immediately on new entries pointing to user-writable directories (`Temp`, `AppData`) or running script engines.
+4. **File Integrity & MD5 Hashing**:
+   - Employs `FileSystemWatcher` on User and Common Startup directories.
+   - Automatically computes MD5 hashes for dropped executables and scripts.
+5. **VirusTotal Threat Intelligence Integration**:
+   - Automatically queries file hashes against the VirusTotal API v3.
+   - Displays real-time malicious/clean detection ratios and provides direct links to online threat reports.
+6. **Active Remediation & Containment**:
+   - **Process Kill**: Remotely terminate target processes and all descendant process trees from the dashboard.
+   - **Host Isolation**: Dynamically generates Windows Firewall rules to isolate the compromised endpoint from the network while preserving EDR agent communication.
+   - **Diagnostics**: Fetch real-time host hardware, OS, disk, and networking telemetry.
 
 ---
 
-## Installation & Running
+## 🛠️ Tech Stack
+
+- **Endpoint Agent**: C# (.NET 10.0), Windows Management Instrumentation (WMI), Win32 APIs, Registry & File IO.
+- **Central Server**: Python 3.13, FastAPI (ASGI), SQLAlchemy ORM, Uvicorn, Jinja2 Templates.
+- **Threat Intel**: VirusTotal API v3.
+- **Web Console**: HTML5, Tailwind CSS, FontAwesome, JavaScript.
+- **Database**: SQLite (Self-contained, zero-configuration).
+
+---
+
+## 🚀 Installation & Running
 
 ### Prerequisites
-*   Windows 10/11 Endpoint
-*   [.NET SDK 10.0+](https://dotnet.microsoft.com/download)
-*   [Python 3.13+](https://www.python.org/downloads/)
+- **Operating System**: Windows 10 or Windows 11.
+- **[.NET SDK 10.0+](https://dotnet.microsoft.com/download)** installed.
+- **[Python 3.10+](https://www.python.org/downloads/)** installed.
 
-### Step 1: Run the Server
-1.  Navigate to the server directory:
-    ```cmd
-    cd AegisServer
-    ```
-2.  Install dependencies:
-    ```cmd
-    pip install -r requirements.txt
-    ```
-3.  Set your optional VirusTotal API Key:
-    ```cmd
-    set VIRUSTOTAL_API_KEY=your_api_key_here
-    ```
-4.  Start the FastAPI server:
-    ```cmd
-    python -m uvicorn main:app
-    ```
-5.  Open your browser to: `http://localhost:8000`
+### Step 1: Start the Central Management Server
+1. Navigate to the server folder:
+   ```cmd
+   cd AegisServer
+   ```
+2. Install Python dependencies:
+   ```cmd
+   pip install -r requirements.txt
+   ```
+3. *(Optional)* Set your VirusTotal API key:
+   ```cmd
+   set VIRUSTOTAL_API_KEY=your_virustotal_api_key_here
+   ```
+4. Start the FastAPI server:
+   ```cmd
+   python -m uvicorn main:app --reload
+   ```
+5. Open your web browser and navigate to: **`http://localhost:8000`**
 
-### Step 2: Run the Agent
-To enable host isolation (firewall controls) and WMI bindings, run the agent as **Administrator**:
+### Step 2: Start the Endpoint Agent
+The agent must be run with **Administrator privileges** to enable WMI process monitoring and Windows Firewall host isolation rules:
 
-1.  Open PowerShell as Administrator and navigate to the agent directory:
-    ```powershell
-    cd AegisAgent
-    ```
-2.  Build the project:
-    ```powershell
-    dotnet build
-    ```
-3.  Execute the agent:
-    ```powershell
-    dotnet run
-    ```
-
----
-
-## Security Assessment & Testing Checklist
-
-*   **Normal Telemetry**: Open Google Chrome or any browser; verify an `INFO` event records PID, Parent process, and Command Line.
-*   **Threat Evasion Alerting**: Spawn PowerShell and execute an EP bypass download command. Verify `CRITICAL` alert pops up on the dashboard.
-*   **LSASS Dumping Simulation**: Run a command like `rundll32.exe comsvcs.dll, MiniDump` or create a dummy file named `mimikatz.exe` and execute it. Verify a `CRITICAL` alert triggers.
-*   **VirusTotal Triage**: Drop a file named `eicar.com` into the startup folder. Check the dashboard for the threat lookup rating card.
-*   **Remediation**: Click **Remediate** next to an alert, select **Kill Process** or **Isolate Network** (ON), and verify containment on the endpoint.
+1. Open PowerShell as **Administrator** and navigate to the agent folder:
+   ```powershell
+   cd AegisAgent
+   ```
+2. Build the project:
+   ```powershell
+   dotnet build
+   ```
+3. Run the agent:
+   ```powershell
+   dotnet run
+   ```
 
 ---
 
-## Disclaimer
-This project is built for educational, research, and defensive demonstration purposes only. Ensure you have authorization before running the agent on any corporate network or monitored enterprise environments.
+## 🧪 Testing & Verification Checklist
+
+- **Normal Telemetry**: Launch any browser or application; verify an `INFO` event records the PID, parent process, and command line.
+- **Execution Policy Bypass Alert**: Launch PowerShell and execute a simulated download cradle. Verify a `CRITICAL` alert triggers in the dashboard.
+- **LSASS Dump Simulation**: Run a command containing `rundll32.exe comsvcs.dll, MiniDump` or create a dummy file named `mimikatz.exe` to trigger a credential theft detection.
+- **Remote Containment**: In the dashboard, click **Remediate** next to an alert and choose **Isolate Host** or **Kill Process** to observe endpoint action.
+
+---
+
+## ⚠️ Disclaimer
+This project is developed solely for educational, defensive security research, and system engineering demonstration purposes. Always obtain explicit authorization before deploying monitoring agents in any production or corporate environment.
