@@ -1,4 +1,4 @@
-# AegisEDR gitignore
+﻿# AegisEDR .gitignore
 
 # C# / .NET build outputs
 **/bin/
@@ -15,6 +15,10 @@ env/
 
 # Database (SQLite)
 AegisServer/aegis_edr.db
+
+# Generated report files
+*.html
+*.json
 
 # IDE specific files
 .vs/
