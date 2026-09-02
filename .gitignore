@@ -1,0 +1,25 @@
+# AegisEDR gitignore
+
+# C# / .NET build outputs
+**/bin/
+**/obj/
+AegisAgent/agent_id.txt
+
+# Python cache & virtual environments
+**/__pycache__/
+**/*.pyc
+**/venv/
+**/.venv/
+env/
+.env
+
+# Database (SQLite)
+AegisServer/aegis_edr.db
+
+# IDE specific files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates

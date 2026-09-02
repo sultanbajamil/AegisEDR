@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AegisEDR Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        bordercolor: '#334155'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-darkbg text-slate-100 font-sans min-h-screen">
+
+    <!-- Top Navbar -->
+    <nav class="bg-cardbg border-b border-bordercolor py-4 px-6 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="bg-red-600 text-white p-2 rounded-lg font-black text-xl tracking-wider">
+                <i class="fa-solid fa-shield-halved"></i> AEGIS
+            </div>
+            <div>
+                <h1 class="text-lg font-bold">AegisEDR Management Console</h1>
+                <p class="text-xs text-slate-400">Endpoint Detection & Response Center</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-full border border-bordercolor text-xs">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>Console Active</span>
+            </div>
+            <button onclick="window.location.reload();" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded text-sm transition">
+                <i class="fa-solid fa-rotate"></i> Refresh
+            </button>
+            <div id="refresh-indicator" class="text-xs text-slate-400">Auto-refresh: 10s</div>
+        </div>
+    </nav>
+
+    <!-- Main Content Layout -->
+    <main class="p-6 grid grid-cols-1 xl:grid-cols-4 gap-6">
+
+        <!-- Column 1 & 2: Active Agents & Threat Alerts -->
+        <div class="xl:col-span-3 flex flex-col gap-6">
+
+            <!-- Active Agents Table -->
+            <section class="bg-cardbg rounded-xl border border-bordercolor p-5 shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-laptop text-blue-400"></i> Monitored Endpoints
+                    </h2>
+                    <span class="bg-slate-800 px-2 py-0.5 rounded text-xs text-slate-300 font-mono">Total: {{ agents|length }}</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-800 text-xs uppercase text-slate-400 border-b border-bordercolor">
+                            <tr>
+                                <th class="py-3 px-4">Hostname</th>
+                                <th class="py-3 px-4">OS Version</th>
+                                <th class="py-3 px-4">IP Address</th>
+                                <th class="py-3 px-4">Agent ID</th>
+                                <th class="py-3 px-4">Last Seen</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-bordercolor">
+                            {% if not agents %}
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-slate-500">No agents registered yet. Start AegisAgent to connect.</td>
+                            </tr>
+                            {% endif %}
+                            {% for agent in agents %}
+                            <tr class="hover:bg-slate-800/50 transition">
+                                <td class="py-3.5 px-4 font-bold text-slate-100 flex items-center gap-2">
+                                    <i class="fa-solid fa-desktop text-slate-400"></i> {{ agent.hostname }}
+                                </td>
+                                <td class="py-3.5 px-4 font-mono text-xs">{{ agent.os_version }}</td>
+                                <td class="py-3.5 px-4 font-mono text-xs">{{ agent.ip_address }}</td>
+                                <td class="py-3.5 px-4 font-mono text-xs text-slate-400">{{ agent.id }}</td>
+                                <td class="py-3.5 px-4 text-xs">{{ agent.last_seen.strftime('%Y-%m-%d %H:%M:%S') }} UTC</td>
+                                <td class="py-3.5 px-4">
+                                    {% if agent.status == 'Active' %}
+                                    <span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-xs font-semibold">Active</span>
+                                    {% else %}
+                                    <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full text-xs font-semibold">Offline</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3.5 px-4 text-center flex items-center justify-center gap-2">
+                                    <button onclick="openRemediationModal('{{ agent.id }}', '{{ agent.hostname }}')" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded text-xs transition flex items-center gap-1">
+                                        <i class="fa-solid fa-bolt"></i> Remediate
+                                    </button>
+                                    <form action="/admin/agents/{{ agent.id }}/delete" method="POST" onsubmit="return confirm('Are you sure you want to remove this endpoint?');" class="inline">
+                                        <button type="submit" class="bg-slate-700 hover:bg-rose-950 hover:text-rose-400 text-slate-300 p-1.5 rounded transition text-xs">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Alerts Stream -->
+            <section class="bg-cardbg rounded-xl border border-bordercolor p-5 shadow-lg flex-1">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-500 animate-pulse"></i> Real-time Threat Alerts
+                    </h2>
+                    <div class="flex gap-2">
+                        <form action="/admin/alerts/clear" method="POST" onsubmit="return confirm('Are you sure you want to clear all alerts?');">
+                            <button type="submit" class="bg-slate-800 hover:bg-slate-700 border border-bordercolor px-3 py-1.5 rounded text-xs text-slate-300 transition">
+                                <i class="fa-solid fa-circle-xmark"></i> Clear All Alerts
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                    {% if not alerts %}
+                    <div class="text-center py-12 text-slate-500 flex flex-col items-center justify-center gap-2">
+                        <i class="fa-solid fa-clipboard-check text-4xl text-slate-600"></i>
+                        <p>No active threats detected. Endpoints are secure.</p>
+                    </div>
+                    {% endif %}
+                    
+                    {% for alert in alerts %}
+                    <div class="p-4 rounded-lg border border-bordercolor bg-slate-900/60 flex flex-col gap-3 relative {% if alert.resolved %}opacity-50{% endif %}">
+                        <!-- Alert Header -->
+                        <div class="flex justify-between items-start gap-4">
+                            <div class="flex items-center gap-2">
+                                <!-- Severity Badge -->
+                                {% if alert.severity == 'CRITICAL' %}
+                                <span class="bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2.5 py-0.5 rounded text-xs font-extrabold font-mono">CRITICAL</span>
+                                {% elif alert.severity == 'WARNING' %}
+                                <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded text-xs font-extrabold font-mono">WARNING</span>
+                                {% else %}
+                                <span class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2.5 py-0.5 rounded text-xs font-extrabold font-mono">INFO</span>
+                                {% endif %}
+
+                                <!-- Category Badge -->
+                                <span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-xs font-semibold font-mono">{{ alert.alert_type }}</span>
+                                
+                                <span class="text-xs text-slate-400"><i class="fa-solid fa-clock"></i> {{ alert.timestamp }}</span>
+                            </div>
+
+                            <div class="flex gap-2">
+                                {% if not alert.resolved %}
+                                <form action="/admin/alerts/{{ alert.id }}/resolve" method="POST">
+                                    <button type="submit" class="bg-slate-800 hover:bg-emerald-950 hover:text-emerald-400 border border-bordercolor text-slate-300 px-2.5 py-1 rounded text-xs transition">
+                                        <i class="fa-solid fa-check"></i> Dismiss
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-emerald-400 text-xs font-semibold"><i class="fa-solid fa-circle-check"></i> Dismissed</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Alert Content -->
+                        <div>
+                            <p class="text-sm font-bold text-slate-100">{{ alert.description }}</p>
+                            <p class="text-xs text-slate-400 mt-1">Host: <span class="text-blue-400 font-mono">{{ alert.agent_hostname }}</span> ({{ alert.agent_id }})</p>
+                        </div>
+
+                        <!-- Alert Details JSON Rendering -->
+                        {% if alert.details %}
+                        <div class="bg-slate-950/80 rounded p-3 border border-bordercolor/60 text-xs font-mono">
+                            {% if alert.alert_type == 'PROCESS' %}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    <div><span class="text-slate-500">Process Name:</span> <span class="text-slate-300 font-bold">{{ alert.details.process_name }}</span></div>
+                                    <div><span class="text-slate-500">Process ID (PID):</span> <span class="text-amber-400">{{ alert.details.pid }}</span></div>
+                                    <div><span class="text-slate-500">Parent Name:</span> <span class="text-slate-400">{{ alert.details.parent_name }}</span></div>
+                                    <div><span class="text-slate-500">Parent PID (PPID):</span> <span class="text-slate-400">{{ alert.details.parent_pid }}</span></div>
+                                    <div class="md:col-span-2"><span class="text-slate-500">Command Line:</span> <span class="text-emerald-400 break-all select-all">{{ alert.details.command_line }}</span></div>
+                                    {% if alert.details.signer %}
+                                    <div class="md:col-span-2"><span class="text-slate-500">Signer Status:</span> <span class="text-blue-400">{{ alert.details.signer }}</span></div>
+                                    {% endif %}
+                                    <!-- Visual Process Tree -->
+                                    <div class="md:col-span-2 mt-2 pt-2 border-t border-bordercolor/40 flex items-center gap-2 text-[10px] font-semibold text-slate-300">
+                                        <span class="bg-slate-800 border border-slate-700 px-2 py-0.5 rounded flex items-center gap-1">
+                                            <i class="fa-solid fa-desktop text-slate-500"></i> {{ alert.details.parent_name }} <span class="text-slate-500 font-mono">({{ alert.details.parent_pid }})</span>
+                                        </span>
+                                        <i class="fa-solid fa-arrow-right-long text-slate-500"></i>
+                                        <span class="bg-rose-950/60 border border-rose-500/30 px-2 py-0.5 rounded text-rose-400 flex items-center gap-1">
+                                            <i class="fa-solid fa-shield-halved text-rose-500"></i> {{ alert.details.process_name }} <span class="text-slate-500 font-mono">({{ alert.details.pid }})</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            {% elif alert.alert_type == 'REGISTRY' %}
+                                <div class="space-y-1">
+                                    <div><span class="text-slate-500">Key Path:</span> <span class="text-amber-400 break-all select-all">{{ alert.details.key_path }}</span></div>
+                                    <div><span class="text-slate-500">Value Name:</span> <span class="text-slate-200">{{ alert.details.value_name }}</span></div>
+                                    <div><span class="text-slate-500">Written Value:</span> <span class="text-emerald-400 break-all select-all">{{ alert.details.written_value }}</span></div>
+                                </div>
+                            {% elif alert.alert_type == 'FILE' %}
+                                <div class="grid grid-cols-1 gap-1">
+                                    <div><span class="text-slate-500">File Action:</span> <span class="text-rose-400 font-bold">{{ alert.details.action }}</span></div>
+                                    <div><span class="text-slate-500">File Path:</span> <span class="text-amber-400 break-all select-all">{{ alert.details.file_path }}</span></div>
+                                    {% if alert.details.file_hash %}
+                                    <div><span class="text-slate-500">MD5 Hash:</span> <span class="text-slate-300 font-mono break-all">{{ alert.details.file_hash }}</span></div>
+                                    {% endif %}
+                                    <!-- VirusTotal integration display -->
+                                    {% if alert.details.virustotal %}
+                                    <div class="mt-2 pt-2 border-t border-bordercolor/40 flex flex-col gap-1 text-[11px]">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-slate-500">Threat Intelligence Triage:</span>
+                                            <span class="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded font-extrabold flex items-center gap-1">
+                                                <i class="fa-solid fa-bug animate-bounce"></i> VirusTotal: {{ alert.details.virustotal.malicious }}/{{ alert.details.virustotal.total_engines }} Malicious
+                                            </span>
+                                            <a href="{{ alert.details.virustotal.permalink }}" target="_blank" class="text-blue-400 hover:underline flex items-center gap-0.5 ml-2 font-semibold">
+                                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> View Report
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% elif alert.alert_type == 'NETWORK' %}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    <div><span class="text-slate-500">Owning Process:</span> <span class="text-slate-300 font-bold">{{ alert.details.process_name }}</span></div>
+                                    <div><span class="text-slate-500">Process PID:</span> <span class="text-amber-400 font-mono">{{ alert.details.pid }}</span></div>
+                                    <div><span class="text-slate-500">Local Endpoint:</span> <span class="text-slate-400 font-mono">{{ alert.details.local_address }}</span></div>
+                                    <div><span class="text-slate-500">Remote Endpoint:</span> <span class="text-emerald-400 font-bold break-all select-all font-mono">{{ alert.details.remote_address }}</span></div>
+                                </div>
+                            {% else %}
+                                <pre class="text-slate-400 overflow-x-auto whitespace-pre-wrap">{{ alert.details | tojson(indent=2) }}</pre>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        <!-- Column 3: Control Panel & Action Log -->
+        <div class="flex flex-col gap-6">
+
+            <!-- Control Panel -->
+            <section class="bg-cardbg rounded-xl border border-bordercolor p-5 shadow-lg">
+                <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-gamepad text-amber-500"></i> Remediation Console
+                </h2>
+                
+                <form action="/admin/command" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-xs uppercase text-slate-400 font-bold mb-1.5">Target Endpoint</label>
+                        <select name="agent_id" id="control-agent-select" class="w-full bg-slate-900 border border-bordercolor rounded p-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" required>
+                            <option value="">-- Select Endpoint --</option>
+                            {% for agent in agents %}
+                            {% if agent.status == 'Active' %}
+                            <option value="{{ agent.id }}">{{ agent.hostname }} ({{ agent.id[:8] }}...)</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs uppercase text-slate-400 font-bold mb-1.5">Remediation Action</label>
+                        <select name="command_type" id="control-command-select" class="w-full bg-slate-900 border border-bordercolor rounded p-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" onchange="updateArgPlaceholder()" required>
+                            <option value="KILL_PROCESS">Kill Process (by PID)</option>
+                            <option value="ISOLATE_NETWORK">Isolate Endpoint (Network Block)</option>
+                            <option value="DIAGNOSTIC">Run Diagnostic (System Info)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs uppercase text-slate-400 font-bold mb-1.5" id="arg-label">Process ID (PID)</label>
+                        <input type="text" name="arguments" id="control-arguments" placeholder="e.g. 1042" class="w-full bg-slate-900 border border-bordercolor rounded p-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" required>
+                    </div>
+
+                    <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded transition text-sm flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-paper-plane"></i> Deploy Remediation Task
+                    </button>
+                </form>
+            </section>
+
+            <!-- Command Action Log -->
+            <section class="bg-cardbg rounded-xl border border-bordercolor p-5 shadow-lg flex-1">
+                <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-slate-300"></i> Remediation Log
+                </h2>
+                
+                <div class="space-y-3 max-h-[450px] overflow-y-auto pr-1">
+                    {% if not commands %}
+                    <p class="text-center py-6 text-slate-500 text-sm">No remediation commands deployed yet.</p>
+                    {% endif %}
+
+                    {% for cmd in commands %}
+                    <div class="p-3 rounded border border-bordercolor bg-slate-900 text-xs font-mono">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-slate-400 font-bold">{{ cmd.command_type }}</span>
+                            <!-- Status Badges -->
+                            {% if cmd.status == 'PENDING' %}
+                            <span class="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded text-[10px]">PENDING</span>
+                            {% elif cmd.status == 'SENT' %}
+                            <span class="text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded text-[10px]">SENT</span>
+                            {% elif cmd.status == 'COMPLETED' %}
+                            <span class="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded text-[10px]">COMPLETED</span>
+                            {% else %}
+                            <span class="text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded text-[10px]">FAILED</span>
+                            {% endif %}
+                        </div>
+                        <div class="space-y-0.5 text-slate-400">
+                            <div><span class="text-slate-600">Args:</span> <span class="text-slate-300">{{ cmd.arguments or "None" }}</span></div>
+                            <div><span class="text-slate-600">Endpoint:</span> <span class="text-blue-400">{{ cmd.agent.hostname if cmd.agent else cmd.agent_id[:8] }}</span></div>
+                            <div><span class="text-slate-600">Sent:</span> <span>{{ cmd.created_at.strftime('%H:%M:%S') }}</span></div>
+                            {% if cmd.result %}
+                            <div class="mt-1.5 pt-1.5 border-t border-bordercolor/50 text-slate-300">
+                                <span class="text-slate-500 font-bold">Result:</span>
+                                <div class="text-[11px] mt-1 bg-slate-950 p-1.5 rounded text-emerald-400 whitespace-pre-wrap select-all font-mono">{{ cmd.result }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Remediation Modal -->
+    <div id="remediation-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-cardbg border border-bordercolor rounded-xl p-6 w-full max-w-md shadow-2xl relative">
+            <button onclick="closeRemediationModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-100 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2 mb-2">
+                <i class="fa-solid fa-bolt text-amber-500"></i> Endpoint Remediation
+            </h3>
+            <p class="text-sm text-slate-400 mb-4">Targeting: <span id="modal-agent-name" class="text-blue-400 font-bold"></span></p>
+            
+            <form action="/admin/command" method="POST" class="space-y-4">
+                <input type="hidden" name="agent_id" id="modal-agent-id">
+                
+                <div>
+                    <label class="block text-xs uppercase text-slate-400 font-bold mb-1.5">Action</label>
+                    <select name="command_type" id="modal-command-select" class="w-full bg-slate-900 border border-bordercolor rounded p-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" onchange="updateModalArgPlaceholder()" required>
+                        <option value="KILL_PROCESS">Kill Process (by PID)</option>
+                        <option value="ISOLATE_NETWORK">Isolate Endpoint (Network Block)</option>
+                        <option value="DIAGNOSTIC">Run Diagnostic (System Info)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs uppercase text-slate-400 font-bold mb-1.5" id="modal-arg-label">Process ID (PID)</label>
+                    <input type="text" name="arguments" id="modal-arguments" placeholder="e.g. 1042" class="w-full bg-slate-900 border border-bordercolor rounded p-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500" required>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded transition text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-circle-play"></i> Run Task
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript to handle dynamically updating views -->
+    <script>
+        function updateArgPlaceholder() {
+            const cmdSelect = document.getElementById("control-command-select");
+            const argInput = document.getElementById("control-arguments");
+            const argLabel = document.getElementById("arg-label");
+            
+            if (cmdSelect.value === "KILL_PROCESS") {
+                argLabel.innerText = "Process ID (PID)";
+                argInput.placeholder = "e.g. 1042";
+                argInput.value = "";
+                argInput.required = true;
+                argInput.disabled = false;
+            } else if (cmdSelect.value === "ISOLATE_NETWORK") {
+                argLabel.innerText = "Network Isolation Action";
+                argInput.placeholder = "ON or OFF";
+                argInput.value = "ON";
+                argInput.required = true;
+                argInput.disabled = false;
+            } else if (cmdSelect.value === "DIAGNOSTIC") {
+                argLabel.innerText = "Diagnostic Commands (Optional)";
+                argInput.placeholder = "None needed";
+                argInput.value = "all";
+                argInput.required = false;
+                argInput.disabled = true;
+            }
+        }
+
+        function updateModalArgPlaceholder() {
+            const cmdSelect = document.getElementById("modal-command-select");
+            const argInput = document.getElementById("modal-arguments");
+            const argLabel = document.getElementById("modal-arg-label");
+            
+            if (cmdSelect.value === "KILL_PROCESS") {
+                argLabel.innerText = "Process ID (PID)";
+                argInput.placeholder = "e.g. 1042";
+                argInput.value = "";
+                argInput.required = true;
+                argInput.disabled = false;
+            } else if (cmdSelect.value === "ISOLATE_NETWORK") {
+                argLabel.innerText = "Network Isolation Action";
+                argInput.placeholder = "ON or OFF";
+                argInput.value = "ON";
+                argInput.required = true;
+                argInput.disabled = false;
+            } else if (cmdSelect.value === "DIAGNOSTIC") {
+                argLabel.innerText = "Diagnostic Commands (Optional)";
+                argInput.placeholder = "None needed";
+                argInput.value = "all";
+                argInput.required = false;
+                argInput.disabled = true;
+            }
+        }
+
+        function openRemediationModal(agentId, agentName) {
+            document.getElementById("modal-agent-id").value = agentId;
+            document.getElementById("modal-agent-name").innerText = agentName;
+            document.getElementById("remediation-modal").style.display = "flex";
+            updateModalArgPlaceholder();
+        }
+
+        function closeRemediationModal() {
+            document.getElementById("remediation-modal").style.display = "none";
+        }
+
+        // Auto-refresh countdown setup
+        let timeRemaining = 10;
+        const refreshText = document.getElementById("refresh-indicator");
+        
+        setInterval(() => {
+            timeRemaining--;
+            if (timeRemaining <= 0) {
+                window.location.reload();
+            } else {
+                refreshText.innerText = `Auto-refresh: ${timeRemaining}s`;
+            }
+        }, 1000);
+
+        // Prepopulate select endpoint if we click remediate or in other contexts
+        window.addEventListener('load', () => {
+            updateArgPlaceholder();
+        });
+    </script>
+</body>
+</html>
